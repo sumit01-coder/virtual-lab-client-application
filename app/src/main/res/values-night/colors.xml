@@ -1,0 +1,30 @@
+<resources>
+    <color name="vl_primary">#818CF8</color>
+    <color name="vl_primary_dark">#6366F1</color>
+    <color name="vl_primary_light">#312E81</color>
+    <color name="vl_primary_soft">#A5B4FC</color>
+
+    <color name="vl_secondary">#34D399</color>
+    <color name="vl_accent">#22D3EE</color>
+
+    <color name="vl_error">#F87171</color>
+    <color name="vl_warning">#FBBF24</color>
+    <color name="vl_success">#4ADE80</color>
+
+    <color name="vl_bg_start">#0F172A</color>
+    <color name="vl_bg_end">#111827</color>
+    <color name="vl_page_bg">#0F172A</color>
+    <color name="vl_card_bg">#111827</color>
+    <color name="vl_card_bg_alt">#172033</color>
+    <color name="vl_card_stroke">#2F3B53</color>
+    <color name="vl_glass_bg">#26FFFFFF</color>
+
+    <color name="vl_text">#F8FAFC</color>
+    <color name="vl_text_secondary">#CBD5E1</color>
+    <color name="vl_text_muted">#94A3B8</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+
+    <color name="vl_trans_primary">#33818CF8</color>
+    <color name="vl_trans_white">#40FFFFFF</color>
+</resources>

@@ -1,0 +1,19 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F8FAFC"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <ImageView android:layout_width="88dp" android:layout_height="88dp" android:src="@drawable/ic_cloud_download" android:tint="@color/vl_primary"/>
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="Downloading Simulation..." android:textColor="#0F172A" android:textSize="24sp" android:textStyle="bold"/>
+    <TextView android:id="@+id/txtDownloadLabName" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="#64748B"/>
+    <ProgressBar android:id="@+id/downloadProgress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="12dp" android:layout_marginTop="22dp" android:max="100"/>
+    <TextView android:id="@+id/txtDownloadPercent" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="0%" android:textStyle="bold" android:textColor="#0F172A"/>
+    <TextView android:id="@+id/txtDownloadSize" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textColor="#64748B"/>
+    <TextView android:id="@+id/txtDownloadSpeed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:textColor="#64748B"/>
+    <TextView android:id="@+id/txtDownloadEta" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:textColor="#64748B"/>
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="Your download is encrypted and stored securely on your device." android:textColor="#64748B"/>
+    <com.google.android.material.button.MaterialButton android:id="@+id/btnCancelDownload" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginTop="20dp" android:background="@drawable/bg_button_outline_soft" android:text="Cancel Download" android:textAllCaps="false" android:textColor="#DC2626"/>
+</LinearLayout>

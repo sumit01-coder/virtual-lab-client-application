@@ -1,0 +1,33 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F8FAFC"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <ImageButton android:id="@+id/btnStorageBack" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_floating_icon" android:padding="10dp" android:src="@drawable/ic_back_20"/>
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Storage Details" android:textColor="#0F172A" android:textSize="24sp" android:textStyle="bold"/>
+
+    <ProgressBar
+        android:id="@+id/storageDonutProgress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="12dp"
+        android:layout_marginTop="16dp"
+        android:max="100"/>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:background="@drawable/bg_card_white" android:orientation="vertical" android:padding="16dp">
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Simulations" android:textColor="#0F172A" android:textStyle="bold"/>
+        <TextView android:id="@+id/txtStorageSimulations" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#64748B"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="App Data" android:textColor="#0F172A" android:textStyle="bold"/>
+        <TextView android:id="@+id/txtStorageAppData" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#64748B"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Other" android:textColor="#0F172A" android:textStyle="bold"/>
+        <TextView android:id="@+id/txtStorageOther" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#64748B"/>
+    </LinearLayout>
+
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:background="@drawable/bg_card_white" android:padding="10dp" android:text="Encrypted Storage" android:textColor="#0F172A"/>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card_white" android:padding="10dp" android:text="Private Storage" android:textColor="#0F172A"/>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card_white" android:padding="10dp" android:text="Auto Clean" android:textColor="#0F172A"/>
+
+    <com.google.android.material.button.MaterialButton android:id="@+id/btnClearAllOffline" android:layout_width="match_parent" android:layout_height="50dp" android:layout_marginTop="18dp" android:background="@drawable/bg_button_outline_soft" android:text="Clear All Offline Data" android:textAllCaps="false" android:textColor="#DC2626"/>
+</LinearLayout>

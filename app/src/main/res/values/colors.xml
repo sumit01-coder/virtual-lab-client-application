@@ -1,0 +1,37 @@
+<resources>
+    <!-- Primary Palette: Deep Indigo & Royal Blue -->
+    <color name="vl_primary">#6366F1</color>
+    <color name="vl_primary_dark">#4338CA</color>
+    <color name="vl_primary_light">#EEF2FF</color>
+    <color name="vl_primary_soft">#818CF8</color>
+
+    <!-- Secondary Palette: Emerald & Cyan -->
+    <color name="vl_secondary">#10B981</color>
+    <color name="vl_accent">#06B6D4</color>
+    
+    <!-- Functional Colors -->
+    <color name="vl_error">#EF4444</color>
+    <color name="vl_warning">#F59E0B</color>
+    <color name="vl_success">#22C55E</color>
+
+    <!-- Backgrounds & Surfaces -->
+    <color name="vl_bg_start">#F8FAFC</color>
+    <color name="vl_bg_end">#F1F5F9</color>
+    <color name="vl_page_bg">#F8FAFC</color>
+    <color name="vl_card_bg">#FFFFFF</color>
+    <color name="vl_card_bg_alt">#F8FAFF</color>
+    <color name="vl_card_stroke">#E3E8FF</color>
+    <color name="vl_glass_bg">#CCFFFFFF</color>
+    
+    <!-- Typography -->
+    <color name="vl_text">#1E293B</color>
+    <color name="vl_text_secondary">#475569</color>
+    <color name="vl_text_muted">#94A3B8</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+
+    <!-- Transparents -->
+    <color name="vl_trans_primary">#226366F1</color>
+    <color name="vl_trans_white">#4DFFFFFF</color>
+</resources>
+

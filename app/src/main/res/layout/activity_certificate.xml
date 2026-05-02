@@ -1,0 +1,86 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@drawable/bg_gradient_soft">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Certificate of Completion"
+        android:textStyle="bold"
+        android:textSize="26sp"
+        android:textColor="@color/vl_text"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_card_white"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Presented to"
+            android:textColor="@color/vl_text_muted"/>
+
+        <TextView
+            android:id="@+id/txtCertName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Student Name"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/vl_primary"/>
+
+        <TextView
+            android:id="@+id/txtCertDepartment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Department"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="@color/vl_text"/>
+
+        <TextView
+            android:id="@+id/txtCertProgress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Completion: -"
+            android:textColor="@color/vl_text_muted"/>
+
+        <TextView
+            android:id="@+id/txtCertIssued"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Issued: -"
+            android:textColor="@color/vl_text_muted"/>
+
+        <TextView
+            android:id="@+id/txtCertHash"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Certificate ID: -"
+            android:textColor="@color/vl_text_muted"/>
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCloseCert"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="18dp"
+        android:text="Done"
+        android:textAllCaps="false"
+        android:background="@drawable/bg_button_primary"
+        android:textColor="@android:color/white"/>
+
+</LinearLayout>
+

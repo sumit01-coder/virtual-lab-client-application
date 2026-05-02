@@ -1,0 +1,69 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application
+        android:name=".VirtualLabApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Virtual Lab"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.VirtualLab">
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_file_paths" />
+        </provider>
+
+        <activity android:name=".ui.SettingsActivity" />
+        <activity android:name=".ui.OfflineSimulationDetailsActivity" />
+        <activity android:name=".ui.OfflineWebViewActivity" />
+        <activity android:name=".ui.StorageDetailsActivity" />
+        <activity android:name=".ui.DownloadCompleteActivity" />
+        <activity android:name=".ui.DownloadSimulationActivity" />
+        <activity android:name=".ui.OfflineLabsActivity" />
+        <activity android:name=".ui.CertificateActivity" />
+        <activity android:name=".ui.ResultActivity" />
+        <activity android:name=".ui.SimulationActivity" />
+        <activity android:name=".ui.LabDetailsActivity" />
+        <activity android:name=".ui.MainActivity" />
+        <activity
+            android:name=".ui.LoginActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="virtuallab" android:host="link" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="www.virtuallabsimulator.com"
+                    android:pathPrefix="/android-link-login" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".ui.OnboardingActivity" />
+        <activity
+            android:name=".ui.SplashActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
+
