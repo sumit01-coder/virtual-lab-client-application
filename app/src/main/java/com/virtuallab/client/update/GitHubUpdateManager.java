@@ -2,14 +2,19 @@ package com.virtuallab.client.update;
 
 import android.app.DownloadManager;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.provider.Settings;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 
+import androidx.core.content.FileProvider;
+
 import com.google.gson.Gson;
+import com.virtuallab.client.BuildConfig;
 import com.virtuallab.client.Config;
 import com.virtuallab.client.security.SecurityPolicy;
 
@@ -43,11 +48,46 @@ public final class GitHubUpdateManager {
 
     public static final class DownloadStatus {
         public final boolean successful;
+        public final boolean failed;
+        public final boolean running;
+        public final boolean paused;
+        public final int progressPercent;
+        public final long bytesDownloaded;
+        public final long totalBytes;
         public final String message;
 
         public DownloadStatus(boolean successful, String message) {
+            this(successful, false, false, false, -1, 0L, -1L, message);
+        }
+
+        public DownloadStatus(
+                boolean successful,
+                boolean failed,
+                boolean running,
+                boolean paused,
+                int progressPercent,
+                long bytesDownloaded,
+                long totalBytes,
+                String message
+        ) {
             this.successful = successful;
+            this.failed = failed;
+            this.running = running;
+            this.paused = paused;
+            this.progressPercent = progressPercent;
+            this.bytesDownloaded = Math.max(0L, bytesDownloaded);
+            this.totalBytes = totalBytes;
             this.message = message == null || message.trim().isEmpty() ? "Unknown status" : message.trim();
+        }
+
+        public String getByteProgressText() {
+            if (totalBytes > 0L) {
+                return formatBytes(bytesDownloaded) + " / " + formatBytes(totalBytes);
+            }
+            if (bytesDownloaded > 0L) {
+                return formatBytes(bytesDownloaded) + " downloaded";
+            }
+            return "";
         }
     }
 
@@ -181,21 +221,24 @@ public final class GitHubUpdateManager {
         try {
             cursor = downloadManager.query(new DownloadManager.Query().setFilterById(downloadId));
             if (cursor == null || !cursor.moveToFirst()) {
-                return new DownloadStatus(false, "Update download could not be found.");
+                return new DownloadStatus(false, true, false, false, -1, 0L, -1L, "Update download could not be found.");
             }
 
             int status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
             int reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON));
+            long downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+            long total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+            int percent = total > 0L ? (int) Math.min(100L, Math.max(0L, downloaded * 100L / total)) : -1;
             if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                return new DownloadStatus(true, "Update downloaded successfully.");
+                return new DownloadStatus(true, false, false, false, 100, downloaded, total, "Update downloaded successfully.");
             }
             if (status == DownloadManager.STATUS_FAILED) {
-                return new DownloadStatus(false, decodeFailureReason(reason));
+                return new DownloadStatus(false, true, false, false, percent, downloaded, total, decodeFailureReason(reason));
             }
             if (status == DownloadManager.STATUS_PAUSED) {
-                return new DownloadStatus(false, "Update download is paused.");
+                return new DownloadStatus(false, false, false, true, percent, downloaded, total, "Update download is paused.");
             }
-            return new DownloadStatus(false, "Update download is still in progress.");
+            return new DownloadStatus(false, false, true, false, percent, downloaded, total, "Update download is still in progress.");
         } finally {
             if (cursor != null) {
                 cursor.close();
@@ -204,7 +247,32 @@ public final class GitHubUpdateManager {
     }
 
     public static boolean installDownloadedApk(Context context) {
-        return false;
+        Context appContext = context.getApplicationContext();
+        File apkFile = getDownloadedApkFile(appContext);
+        if (apkFile == null) {
+            return false;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && !appContext.getPackageManager().canRequestPackageInstalls()) {
+            Intent settingsIntent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                    .setData(Uri.parse("package:" + appContext.getPackageName()))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(settingsIntent);
+            throw new SecurityException("Install permission is not enabled for this app.");
+        }
+
+        Uri apkUri = FileProvider.getUriForFile(
+                appContext,
+                BuildConfig.APPLICATION_ID + ".fileprovider",
+                apkFile
+        );
+        Intent intent = new Intent(Intent.ACTION_VIEW)
+                .setDataAndType(apkUri, APK_MIME)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(intent);
+        return true;
     }
 
     public static boolean hasDownloadedApk(Context context) {
@@ -229,6 +297,16 @@ public final class GitHubUpdateManager {
 
     public static long getStoredDownloadId(Context context) {
         return prefs(context.getApplicationContext()).getLong(KEY_DOWNLOAD_ID, -1L);
+    }
+
+    public static boolean cancelDownload(Context context, long downloadId) {
+        Context appContext = context.getApplicationContext();
+        DownloadManager downloadManager = (DownloadManager) appContext.getSystemService(Context.DOWNLOAD_SERVICE);
+        if (downloadManager != null && downloadId > 0L) {
+            downloadManager.remove(downloadId);
+        }
+        clearStoredDownload(appContext);
+        return true;
     }
 
     public static void clearStoredDownload(Context context) {
@@ -319,6 +397,20 @@ public final class GitHubUpdateManager {
 
     private static String safe(String value) {
         return value == null || value.trim().isEmpty() ? "Unknown error" : value.trim();
+    }
+
+    private static String formatBytes(long bytes) {
+        if (bytes < 1024L) {
+            return bytes + " B";
+        }
+        double value = bytes;
+        String[] units = {"KB", "MB", "GB"};
+        int unitIndex = -1;
+        do {
+            value = value / 1024D;
+            unitIndex++;
+        } while (value >= 1024D && unitIndex < units.length - 1);
+        return String.format(Locale.US, value >= 100D ? "%.0f %s" : "%.1f %s", value, units[unitIndex]);
     }
 
     private static String firstNonEmpty(String... values) {

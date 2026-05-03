@@ -10,6 +10,8 @@ import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -57,11 +59,32 @@ public class SettingsActivity extends AppCompatActivity {
     private Button btnDownloadUpdate;
     private Button btnViewRelease;
     private Button btnInstallUpdate;
+    private Button btnCancelUpdate;
 
     private GitHubReleaseInfo latestRelease;
     private long activeDownloadId = -1L;
     private boolean languageSelectionReady;
     private boolean downloadReceiverRegistered;
+    private final Handler downloadProgressHandler = new Handler(Looper.getMainLooper());
+    private final Runnable downloadProgressRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (activeDownloadId <= 0L) {
+                return;
+            }
+            GitHubUpdateManager.DownloadStatus status = GitHubUpdateManager.getDownloadStatus(SettingsActivity.this, activeDownloadId);
+            bindDownloadProgress(status);
+            if (status.successful) {
+                handleDownloadCompleted(activeDownloadId);
+                return;
+            }
+            if (status.failed) {
+                handleDownloadFailed(status.message);
+                return;
+            }
+            downloadProgressHandler.postDelayed(this, 700L);
+        }
+    };
 
     private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
         @Override
@@ -70,8 +93,7 @@ public class SettingsActivity extends AppCompatActivity {
                 return;
             }
             long downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L);
-            long storedId = GitHubUpdateManager.getStoredDownloadId(SettingsActivity.this);
-            if (downloadId == -1L || (downloadId != activeDownloadId && downloadId != storedId)) {
+            if (downloadId == -1L || downloadId != activeDownloadId) {
                 return;
             }
             handleDownloadCompleted(downloadId);
@@ -99,6 +121,7 @@ public class SettingsActivity extends AppCompatActivity {
             bindCurrentVersion();
             syncDownloadButtons();
             updateSecurityCard();
+            resumeStoredDownloadProgress();
         }
     }
 
@@ -123,6 +146,7 @@ public class SettingsActivity extends AppCompatActivity {
             unregisterReceiver(downloadReceiver);
             downloadReceiverRegistered = false;
         }
+        downloadProgressHandler.removeCallbacks(downloadProgressRunnable);
     }
 
     private void bindViews() {
@@ -145,6 +169,7 @@ public class SettingsActivity extends AppCompatActivity {
         btnDownloadUpdate = findViewById(R.id.btnDownloadUpdate);
         btnViewRelease = findViewById(R.id.btnViewRelease);
         btnInstallUpdate = findViewById(R.id.btnInstallUpdate);
+        btnCancelUpdate = findViewById(R.id.btnCancelUpdate);
     }
 
     private void setupPreferences() {
@@ -201,7 +226,9 @@ public class SettingsActivity extends AppCompatActivity {
             openUrl(target);
         });
         btnInstallUpdate.setOnClickListener(v -> installDownloadedUpdate());
+        btnCancelUpdate.setOnClickListener(v -> cancelUpdateDownload());
         syncDownloadButtons();
+        resumeStoredDownloadProgress();
     }
 
     private void updateSecurityCard() {
@@ -338,8 +365,8 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         if (releaseInfo.isNewerThan(GitHubUpdateManager.getCurrentVersionName(this))) {
-            txtUpdateStatus.setText("Update available. Open the trusted release page to review the latest build.");
-            btnDownloadUpdate.setVisibility(View.GONE);
+            txtUpdateStatus.setText("Update available. Download the latest APK without leaving the app.");
+            btnDownloadUpdate.setVisibility(View.VISIBLE);
         } else {
             txtUpdateStatus.setText("This app is already on the latest published version.");
             btnDownloadUpdate.setVisibility(View.GONE);
@@ -354,8 +381,11 @@ public class SettingsActivity extends AppCompatActivity {
         }
         try {
             activeDownloadId = GitHubUpdateManager.enqueueDownload(this, latestRelease);
-            txtUpdateStatus.setText("Downloading update through Android's download manager...");
+            progressUpdate.setIndeterminate(true);
+            progressUpdate.setVisibility(View.VISIBLE);
+            txtUpdateStatus.setText("Starting update download...");
             syncDownloadButtons();
+            startDownloadProgressPolling();
             Toast.makeText(this, "Update download started", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             txtUpdateStatus.setText("Could not start update download: " + safeMessage(e.getMessage()));
@@ -367,33 +397,113 @@ public class SettingsActivity extends AppCompatActivity {
         GitHubUpdateManager.DownloadStatus status = GitHubUpdateManager.getDownloadStatus(this, downloadId);
         if (status.successful) {
             activeDownloadId = -1L;
-            txtUpdateStatus.setText("Update downloaded. Tap install to update the app.");
+            downloadProgressHandler.removeCallbacks(downloadProgressRunnable);
+            txtUpdateStatus.setText("Update downloaded. Opening installer...");
             syncDownloadButtons();
             Toast.makeText(this, "Update ready to install", Toast.LENGTH_LONG).show();
+            installDownloadedUpdate();
         } else {
-            activeDownloadId = -1L;
-            txtUpdateStatus.setText("Update download failed: " + status.message);
-            GitHubUpdateManager.clearStoredDownload(this);
-            syncDownloadButtons();
-            Toast.makeText(this, status.message, Toast.LENGTH_LONG).show();
+            handleDownloadFailed(status.message);
         }
     }
 
     private void installDownloadedUpdate() {
-        if (!GitHubUpdateManager.installDownloadedApk(this)) {
+        try {
+            if (!GitHubUpdateManager.installDownloadedApk(this)) {
+                txtUpdateStatus.setText("Downloaded update is missing. Download the latest APK again.");
+            }
+        } catch (ActivityNotFoundException e) {
+            txtUpdateStatus.setText("No installer is available on this device.");
+        } catch (SecurityException e) {
             txtUpdateStatus.setText("Allow installs from this app, then tap install again.");
         }
     }
 
     private void syncDownloadButtons() {
-        btnInstallUpdate.setVisibility(View.GONE);
-        btnDownloadUpdate.setVisibility(View.GONE);
-        GitHubUpdateManager.clearStoredDownload(this);
+        boolean hasDownloadedApk = GitHubUpdateManager.hasDownloadedApk(this);
+        boolean hasActiveDownload = activeDownloadId > 0L;
+        btnCancelUpdate.setVisibility(hasActiveDownload ? View.VISIBLE : View.GONE);
+        btnInstallUpdate.setVisibility(hasDownloadedApk && !hasActiveDownload ? View.VISIBLE : View.GONE);
+        btnDownloadUpdate.setEnabled(!hasActiveDownload);
+        btnCheckUpdate.setEnabled(!hasActiveDownload);
+        if (hasActiveDownload) {
+            btnDownloadUpdate.setVisibility(View.GONE);
+        }
     }
 
     private void setCheckingState(boolean checking) {
+        progressUpdate.setIndeterminate(checking);
         progressUpdate.setVisibility(checking ? View.VISIBLE : View.GONE);
         btnCheckUpdate.setEnabled(!checking);
+    }
+
+    private void startDownloadProgressPolling() {
+        downloadProgressHandler.removeCallbacks(downloadProgressRunnable);
+        downloadProgressHandler.post(downloadProgressRunnable);
+    }
+
+    private void resumeStoredDownloadProgress() {
+        long storedId = GitHubUpdateManager.getStoredDownloadId(this);
+        if (storedId <= 0L) {
+            return;
+        }
+        GitHubUpdateManager.DownloadStatus status = GitHubUpdateManager.getDownloadStatus(this, storedId);
+        if (status.running || status.paused) {
+            activeDownloadId = storedId;
+            bindDownloadProgress(status);
+            syncDownloadButtons();
+            startDownloadProgressPolling();
+        } else if (status.successful) {
+            activeDownloadId = -1L;
+            txtUpdateStatus.setText("Update downloaded. Tap install to update the app.");
+            syncDownloadButtons();
+        } else if (status.failed) {
+            handleDownloadFailed(status.message);
+        }
+    }
+
+    private void bindDownloadProgress(GitHubUpdateManager.DownloadStatus status) {
+        progressUpdate.setVisibility(View.VISIBLE);
+        progressUpdate.setIndeterminate(status.progressPercent < 0);
+        if (status.progressPercent >= 0) {
+            progressUpdate.setProgress(status.progressPercent);
+        }
+        String bytes = status.getByteProgressText();
+        String percent = status.progressPercent >= 0 ? status.progressPercent + "%" : "Preparing";
+        txtUpdateStatus.setText(bytes.isEmpty()
+                ? "Downloading update: " + percent
+                : "Downloading update: " + percent + " (" + bytes + ")");
+        syncDownloadButtons();
+    }
+
+    private void cancelUpdateDownload() {
+        if (activeDownloadId <= 0L) {
+            return;
+        }
+        downloadProgressHandler.removeCallbacks(downloadProgressRunnable);
+        GitHubUpdateManager.cancelDownload(this, activeDownloadId);
+        activeDownloadId = -1L;
+        progressUpdate.setVisibility(View.GONE);
+        txtUpdateStatus.setText("Update download canceled. You can start it again anytime.");
+        syncDownloadButtons();
+        if (latestRelease != null && latestRelease.hasApkAsset()
+                && latestRelease.isNewerThan(GitHubUpdateManager.getCurrentVersionName(this))) {
+            btnDownloadUpdate.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void handleDownloadFailed(String message) {
+        activeDownloadId = -1L;
+        downloadProgressHandler.removeCallbacks(downloadProgressRunnable);
+        progressUpdate.setVisibility(View.GONE);
+        txtUpdateStatus.setText("Update download failed: " + safeMessage(message));
+        GitHubUpdateManager.clearStoredDownload(this);
+        syncDownloadButtons();
+        if (latestRelease != null && latestRelease.hasApkAsset()
+                && latestRelease.isNewerThan(GitHubUpdateManager.getCurrentVersionName(this))) {
+            btnDownloadUpdate.setVisibility(View.VISIBLE);
+        }
+        Toast.makeText(this, safeMessage(message), Toast.LENGTH_LONG).show();
     }
 
     private void openUrl(String url) {
