@@ -6,17 +6,38 @@ android {
     namespace 'com.virtuallab.client'
     compileSdk 35
 
+    def releaseStoreFilePath = providers.gradleProperty("VL_RELEASE_STORE_FILE").orElse(providers.environmentVariable("VL_RELEASE_STORE_FILE")).orNull
+    def releaseStorePassword = providers.gradleProperty("VL_RELEASE_STORE_PASSWORD").orElse(providers.environmentVariable("VL_RELEASE_STORE_PASSWORD")).orNull
+    def releaseKeyAlias = providers.gradleProperty("VL_RELEASE_KEY_ALIAS").orElse(providers.environmentVariable("VL_RELEASE_KEY_ALIAS")).orNull
+    def releaseKeyPassword = providers.gradleProperty("VL_RELEASE_KEY_PASSWORD").orElse(providers.environmentVariable("VL_RELEASE_KEY_PASSWORD")).orNull
+    def hasReleaseSigning = releaseStoreFilePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+
     defaultConfig {
         applicationId "com.virtuallab.client"
         minSdk 24
         targetSdk 35
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 15
+        versionName "1.2.2"
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile file(releaseStoreFilePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -24,6 +45,10 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 }
 

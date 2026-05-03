@@ -5,6 +5,8 @@ public final class Config {
 
     // Change this to your domain
     public static final String BASE_URL = "https://www.virtuallabsimulator.com/android_api/client/";
+    public static final String AI_TUTOR_URL = BASE_URL + "lab_tutor.php";
+    public static final String CRASH_REPORT_URL = BASE_URL + "crash_report.php";
     // Use your Google OAuth Web Client ID from Google Cloud Console
     public static final String GOOGLE_WEB_CLIENT_ID = "572529233442-s85h72fmmt4ct82lq8a4prrnsfta37h6.apps.googleusercontent.com";
 

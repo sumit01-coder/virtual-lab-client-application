@@ -5,18 +5,31 @@
     android:layout_height="wrap_content"
     android:layout_gravity="bottom"
     android:background="@drawable/bg_bottom_nav_shell"
-    android:elevation="10dp"
+    android:elevation="18dp"
     android:orientation="vertical"
-    android:padding="8dp">
+    android:paddingStart="8dp"
+    android:paddingTop="6dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="8dp">
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
-        app:itemActiveIndicatorStyle="@style/Widget.Material3.BottomNavigationView.ActiveIndicator"
-        app:itemIconTint="@color/bottom_nav_selector"
-        app:itemTextColor="@color/bottom_nav_selector"
+        android:minHeight="70dp"
+        android:paddingStart="2dp"
+        android:paddingEnd="2dp"
+        app:itemActiveIndicatorStyle="@null"
+        app:itemBackground="@drawable/bg_bottom_nav_item"
+        app:itemIconSize="25dp"
+        app:itemIconTint="@color/bottom_nav_colors"
+        app:itemPaddingBottom="8dp"
+        app:itemPaddingTop="8dp"
+        app:itemRippleColor="#1A6366F1"
+        app:itemTextAppearanceActive="@style/TextAppearance.VirtualLab.BottomNav.Active"
+        app:itemTextAppearanceInactive="@style/TextAppearance.VirtualLab.BottomNav.Inactive"
+        app:itemTextColor="@color/bottom_nav_colors"
         app:labelVisibilityMode="labeled"
         app:menu="@menu/offline_bottom_nav_menu" />
 </LinearLayout>

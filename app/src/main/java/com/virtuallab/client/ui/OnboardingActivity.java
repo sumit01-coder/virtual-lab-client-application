@@ -14,6 +14,7 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.button.MaterialButton;
 import com.virtuallab.client.R;
 import com.virtuallab.client.ui.adapter.OnboardingAdapter;
+import com.virtuallab.client.util.NetworkHealthManager;
 
 import java.util.Arrays;
 
@@ -74,8 +75,16 @@ public class OnboardingActivity extends AppCompatActivity {
 
     private void completeOnboardingAndOpenMain() {
         prefs.edit().putBoolean(KEY_ONBOARDING_DONE, true).apply();
-        startActivity(new Intent(this, MainActivity.class));
-        finish();
+        NetworkHealthManager.checkAsync(this, result -> {
+            if (result.isGoodForServerData()) {
+                startActivity(new Intent(this, MainActivity.class));
+            } else {
+                Intent i = new Intent(this, NetworkStatusActivity.class);
+                i.putExtra(NetworkStatusActivity.EXTRA_NEXT_SCREEN, NetworkStatusActivity.NEXT_MAIN);
+                startActivity(i);
+            }
+            finish();
+        });
     }
 }
 

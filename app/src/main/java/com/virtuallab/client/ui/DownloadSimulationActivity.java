@@ -12,6 +12,7 @@ import com.virtuallab.client.R;
 import com.virtuallab.client.offline.DownloadProgressListener;
 import com.virtuallab.client.offline.OfflineSimulationManager;
 import com.virtuallab.client.offline.SimulationMeta;
+import com.virtuallab.client.util.NetworkHealthManager;
 
 public class DownloadSimulationActivity extends AppCompatActivity {
 
@@ -80,6 +81,19 @@ public class DownloadSimulationActivity extends AppCompatActivity {
         meta.materials = materials;
         meta.procedure = procedure;
 
+        NetworkHealthManager.checkAsync(this, result -> {
+            if (!result.isGoodForServerData()) {
+                Intent i = new Intent(this, NetworkStatusActivity.class);
+                i.putExtra(NetworkStatusActivity.EXTRA_NEXT_SCREEN, NetworkStatusActivity.NEXT_MAIN);
+                startActivity(i);
+                finish();
+                return;
+            }
+            startDownload(meta, zipUrl);
+        });
+    }
+
+    private void startDownload(SimulationMeta meta, String zipUrl) {
         Toast.makeText(this, "Download started", Toast.LENGTH_SHORT).show();
         manager.downloadSimulation(meta, zipUrl, new DownloadProgressListener() {
             @Override

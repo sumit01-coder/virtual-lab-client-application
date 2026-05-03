@@ -53,42 +53,57 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
-                <TextView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginTop="4dp"
-                    android:layout_marginEnd="10dp"
-                    android:background="@drawable/bg_glass_card"
-                    android:gravity="center"
-                    android:textColor="@android:color/white"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:text="!" />
-
                 <FrameLayout
-                    android:id="@+id/txtViewAllDepartments"
-                    android:layout_width="52dp"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="4dp"
-                    android:background="@drawable/bg_glass_card"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="2dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/bg_home_action_circle"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackgroundBorderless"
+                    android:gravity="center"
                     android:padding="11dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:contentDescription="Notifications"
+                        android:src="@drawable/ic_bell_20"
+                        app:tint="@color/vl_primary" />
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_gravity="top|end"
+                        android:layout_margin="4dp"
+                        android:background="@drawable/bg_home_alert_dot" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/txtViewAllDepartments"
+                    android:layout_width="54dp"
+                    android:layout_height="54dp"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/bg_home_profile_circle"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackgroundBorderless"
+                    android:padding="12dp">
 
                     <ImageView
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:contentDescription="Profile"
                         android:src="@drawable/ic_profile_24"
-                        app:tint="@android:color/white" />
+                        app:tint="@color/vl_primary" />
 
                     <View
-                        android:layout_width="11dp"
-                        android:layout_height="11dp"
+                        android:layout_width="13dp"
+                        android:layout_height="13dp"
                         android:layout_gravity="bottom|end"
-                        android:layout_margin="2dp"
-                        android:background="@drawable/bg_dot_active" />
+                        android:layout_margin="3dp"
+                        android:background="@drawable/bg_home_profile_status" />
                 </FrameLayout>
             </LinearLayout>
 
@@ -108,10 +123,10 @@
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="58dp"
                 android:layout_marginTop="16dp"
-                android:background="@drawable/bg_search_glass"
-                android:elevation="8dp"
+                android:background="@drawable/bg_home_search_premium"
+                android:elevation="10dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingStart="14dp"
@@ -140,17 +155,23 @@
                     android:textSize="14sp" />
 
                 <ImageView
+                    android:id="@+id/btnVoiceSearch"
                     android:layout_width="18dp"
                     android:layout_height="18dp"
                     android:contentDescription="Voice search"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:src="@drawable/ic_mic_20"
                     app:tint="@color/vl_primary" />
 
                 <TextView
+                    android:id="@+id/btnAiTutor"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
                     android:layout_marginStart="8dp"
-                    android:background="@drawable/bg_button_primary"
+                    android:background="@drawable/bg_home_ai_button"
+                    android:clickable="true"
+                    android:focusable="true"
                     android:gravity="center"
                     android:text="AI"
                     android:textColor="@android:color/white"
@@ -208,64 +229,59 @@
                                 android:textStyle="bold" />
 
                             <TextView
-                                android:id="@+id/txtContinueTitle"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="3dp"
-                                android:maxLines="2"
-                                android:text="No pending practicals"
+                                android:text="Pending practicals"
                                 android:textColor="@color/vl_text"
                                 android:textSize="22sp"
                                 android:textStyle="bold" />
 
                             <TextView
-                                android:id="@+id/txtContinueSubtitle"
+                                android:id="@+id/txtContinueCount"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
+                                android:text="Loading your track..."
                                 android:textColor="@color/vl_text_muted"
                                 android:textSize="12sp" />
                         </LinearLayout>
 
                         <TextView
-                            android:id="@+id/btnResume"
+                            android:id="@+id/btnContinueProgress"
                             android:layout_width="92dp"
                             android:layout_height="42dp"
                             android:background="@drawable/bg_button_primary"
                             android:gravity="center"
-                            android:text="Resume"
+                            android:text="Track"
                             android:textColor="@android:color/white"
                             android:textSize="13sp"
                             android:textStyle="bold" />
                     </LinearLayout>
 
-                    <LinearLayout
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvContinueLearning"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:clipToPadding="false"
+                        android:minHeight="142dp"
+                        android:overScrollMode="never"
+                        android:paddingEnd="8dp" />
 
-                        <ProgressBar
-                            android:id="@+id/progressContinue"
-                            style="?android:attr/progressBarStyleHorizontal"
-                            android:layout_width="0dp"
-                            android:layout_height="6dp"
-                            android:layout_weight="1"
-                            android:max="100"
-                            android:progress="0"
-                            android:progressDrawable="@drawable/bg_progress_home" />
-
-                        <TextView
-                            android:id="@+id/txtContinuePct"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="8dp"
-                            android:text="0%"
-                            android:textColor="@color/vl_text_muted"
-                            android:textSize="11sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
+                    <TextView
+                        android:id="@+id/txtContinueEmpty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_chip_soft"
+                        android:gravity="center"
+                        android:padding="14dp"
+                        android:text="No pending practicals. Explore labs to start a new track."
+                        android:textColor="@color/vl_primary"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

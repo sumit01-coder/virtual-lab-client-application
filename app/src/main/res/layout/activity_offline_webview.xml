@@ -3,8 +3,30 @@
     android:layout_height="match_parent"
     android:background="#F8FAFC">
 
-    <WebView
-        android:id="@+id/offlineWebView"
+    <FrameLayout
+        android:id="@+id/offlineWebViewContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/offlineLoadingPanel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:indeterminate="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Preparing offline simulation..."
+            android:textColor="#334155"
+            android:textSize="15sp" />
+    </LinearLayout>
 </FrameLayout>

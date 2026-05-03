@@ -27,53 +27,50 @@ git remote add origin https://github.com/sumit01-coder/virtual-lab-client-applic
 git push -u origin main
 ```
 
-## 3. Build the APK for release uploads
+## 3. Configure release signing
 
-Update the app version in [app/build.gradle](app/build.gradle) before each GitHub release:
+Use one stable release keystore for every public APK. Debug APKs are for testing only and are much more likely to trigger Android/Play Protect warnings when shared.
 
-- Increase `versionCode`
-- Change `versionName`
-
-Example:
-
-```gradle
-versionCode 2
-versionName "1.0.1"
-```
-
-Build the APK:
+Set these environment variables before publishing:
 
 ```powershell
-.\gradlew.bat assembleDebug
+$env:VL_RELEASE_STORE_FILE="D:\keys\virtual-lab-release.jks"
+$env:VL_RELEASE_STORE_PASSWORD="your-store-password"
+$env:VL_RELEASE_KEY_ALIAS="virtual-lab"
+$env:VL_RELEASE_KEY_PASSWORD="your-key-password"
+$env:GITHUB_TOKEN="your-github-token"
 ```
-
-The generated APK is:
-
-`app\build\outputs\apk\debug\app-debug.apk`
 
 ## 4. Publish a GitHub release
 
-Create a GitHub release whose tag matches the app version.
+Use the release script. It updates [app/build.gradle](app/build.gradle), builds a signed release APK, creates the GitHub release, and uploads the APK.
+
+```powershell
+.\release_to_github.ps1 -VersionName "1.2.1" -ReleaseNotes "Fixes and improvements."
+```
+
+Optional: pass `-VersionCode 13`. If omitted, the script increases the current `versionCode` by 1.
+
+The uploaded asset name will be similar to:
+
+`virtual-lab-client-1.2.1.apk`
+
+The GitHub tag will match the app version:
 
 Examples:
 
 - `v1.0.1`
 - `v1.1.0`
 
-Attach the APK asset to that release. The updater will look for the first `.apk` asset on the latest release.
-
-Recommended asset name:
-
-`virtual-lab-client-1.0.1.apk`
-
 ## 5. Important signing rule
 
 To update an already-installed Android app, the new APK must be signed with the same key as the installed APK.
 
-- For local testing, uploading the APK built from this machine is usually enough.
-- For production updates, use one stable release keystore for every release.
+- For local testing, install debug APKs manually and keep them separate from public releases.
+- For production updates, use the same stable release keystore for every release.
 
 If the signing key changes, Android will refuse to install the update over the existing app.
+If `versionCode` is not higher than the installed app, Android will not treat the APK as an update and Settings may still show the old installed version.
 
 ## 6. How the app behaves
 

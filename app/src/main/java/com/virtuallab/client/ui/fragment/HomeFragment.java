@@ -1,23 +1,31 @@
 package com.virtuallab.client.ui.fragment;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.speech.RecognizerIntent;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SnapHelper;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.virtuallab.client.R;
@@ -32,6 +40,7 @@ import com.virtuallab.client.data.DepartmentPrefs;
 import com.virtuallab.client.data.SessionStore;
 import com.virtuallab.client.model.LabItem;
 import com.virtuallab.client.ui.LabDetailsActivity;
+import com.virtuallab.client.ui.LabTutorActivity;
 import com.virtuallab.client.ui.MainActivity;
 import com.virtuallab.client.ui.OfflineLabsActivity;
 import com.virtuallab.client.ui.adapter.LabCardAdapter;
@@ -39,6 +48,7 @@ import com.virtuallab.client.ui.adapter.LabCardAdapter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import retrofit2.Call;
@@ -54,12 +64,11 @@ public class HomeFragment extends Fragment {
     private LinearLayout departmentCardContainer;
     private RecyclerView featured;
 
-    private TextView txtContinueTitle;
-    private TextView txtContinueSubtitle;
-    private TextView txtContinuePct;
-    private ProgressBar progressContinue;
+    private RecyclerView rvContinueLearning;
+    private TextView txtContinueCount;
+    private TextView txtContinueEmpty;
+    private TextView btnContinueProgress;
     private View cardContinue;
-    private TextView btnResume;
 
     private View txtViewAllDepartments;
     private TextView txtViewAllFeatured;
@@ -73,15 +82,30 @@ public class HomeFragment extends Fragment {
     private TextView txtSystemServer;
     private TextView txtSystemApi;
     private TextView txtSystemCatalog;
+    private EditText edtSearch;
+    private View btnVoiceSearch;
+    private View btnAiTutor;
     private View actionExplore;
     private View actionDownloads;
     private View actionProgress;
     private View actionProfile;
 
     private LabItem continueItem;
+    private ContinueLearningAdapter continueLearningAdapter;
     private long prefsVersionSeen = -1L;
     private final Map<Integer, String> exploreImageCache = new HashMap<>();
     private long exploreImageCacheUpdatedAt = 0L;
+
+    private final ActivityResultLauncher<Intent> voiceSearchLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) return;
+                ArrayList<String> matches = result.getData().getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                if (matches == null || matches.isEmpty()) return;
+                String query = matches.get(0);
+                edtSearch.setText(query);
+                edtSearch.setSelection(edtSearch.length());
+                openExploreSearch(query);
+            });
 
     @Nullable
     @Override
@@ -99,12 +123,11 @@ public class HomeFragment extends Fragment {
         departmentCardContainer = view.findViewById(R.id.departmentCardContainer);
         featured = view.findViewById(R.id.rvFeatured);
 
-        txtContinueTitle = view.findViewById(R.id.txtContinueTitle);
-        txtContinueSubtitle = view.findViewById(R.id.txtContinueSubtitle);
-        txtContinuePct = view.findViewById(R.id.txtContinuePct);
-        progressContinue = view.findViewById(R.id.progressContinue);
+        rvContinueLearning = view.findViewById(R.id.rvContinueLearning);
+        txtContinueCount = view.findViewById(R.id.txtContinueCount);
+        txtContinueEmpty = view.findViewById(R.id.txtContinueEmpty);
+        btnContinueProgress = view.findViewById(R.id.btnContinueProgress);
         cardContinue = view.findViewById(R.id.cardContinue);
-        btnResume = view.findViewById(R.id.btnResume);
 
         txtViewAllDepartments = view.findViewById(R.id.txtViewAllDepartments);
         txtViewAllFeatured = view.findViewById(R.id.txtViewAllFeatured);
@@ -118,22 +141,39 @@ public class HomeFragment extends Fragment {
         txtSystemServer = view.findViewById(R.id.txtSystemServer);
         txtSystemApi = view.findViewById(R.id.txtSystemApi);
         txtSystemCatalog = view.findViewById(R.id.txtSystemCatalog);
+        edtSearch = view.findViewById(R.id.edtSearch);
+        btnVoiceSearch = view.findViewById(R.id.btnVoiceSearch);
+        btnAiTutor = view.findViewById(R.id.btnAiTutor);
         actionExplore = view.findViewById(R.id.actionExplore);
         actionDownloads = view.findViewById(R.id.actionDownloads);
         actionProgress = view.findViewById(R.id.actionProgress);
         actionProfile = view.findViewById(R.id.actionProfile);
 
         featured.setLayoutManager(new LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false));
+        rvContinueLearning.setLayoutManager(new LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false));
+        SnapHelper snapHelper = new PagerSnapHelper();
+        snapHelper.attachToRecyclerView(rvContinueLearning);
+        continueLearningAdapter = new ContinueLearningAdapter(new ArrayList<>(), 0, this::openContinueItem);
+        rvContinueLearning.setAdapter(continueLearningAdapter);
 
         txtViewAllDepartments.setOnClickListener(v -> openProfileTab());
         txtViewAllFeatured.setOnClickListener(v -> openExploreTab());
         txtViewAllContinue.setOnClickListener(v -> openProgressTab());
         cardContinue.setOnClickListener(v -> openContinueItem());
-        btnResume.setOnClickListener(v -> openContinueItem());
+        btnContinueProgress.setOnClickListener(v -> openProgressTab());
         actionExplore.setOnClickListener(v -> openExploreTab());
         actionDownloads.setOnClickListener(v -> openOfflineDownloads());
         actionProgress.setOnClickListener(v -> openProgressTab());
         actionProfile.setOnClickListener(v -> openProfileTab());
+        btnVoiceSearch.setOnClickListener(v -> startVoiceSearch());
+        btnAiTutor.setOnClickListener(v -> openAiTutor());
+        edtSearch.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                openExploreSearch(edtSearch.getText() != null ? edtSearch.getText().toString() : "");
+                return true;
+            }
+            return false;
+        });
 
         loadHome();
         loadProfile();
@@ -157,7 +197,15 @@ public class HomeFragment extends Fragment {
             @Override
             public void onResponse(Call<ApiEnvelope<HomePayload>> call, Response<ApiEnvelope<HomePayload>> response) {
                 ApiEnvelope<HomePayload> env = response.body();
-                if (!isAdded() || env == null || !env.status || env.data == null) return;
+                if (!isAdded()) return;
+                if (env == null || !env.status || env.data == null) {
+                    featured.setAdapter(new LabCardAdapter(new ArrayList<>()));
+                    bindContinue(new ArrayList<>());
+                    applyHomeFallback();
+                    String message = responseMessage(response, "Home data not available. Please refresh or login again.");
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                    return;
+                }
 
                 updateGreeting(env.data.greeting);
 
@@ -187,9 +235,51 @@ public class HomeFragment extends Fragment {
                     featured.setAdapter(new LabCardAdapter(new ArrayList<>()));
                     bindContinue(new ArrayList<>());
                     applyHomeFallback();
+                    Toast.makeText(requireContext(), "Home data failed: " + t.getMessage(), Toast.LENGTH_LONG).show();
                 }
             }
         });
+    }
+
+    private String responseMessage(Response<?> response, String fallback) {
+        if (response == null) return fallback;
+        Object body = response.body();
+        if (body instanceof ApiEnvelope) {
+            String message = ((ApiEnvelope<?>) body).message;
+            if (message != null && !message.trim().isEmpty()) {
+                return message.trim();
+            }
+        }
+        try {
+            if (response.errorBody() != null) {
+                String raw = response.errorBody().string();
+                String message = extractJsonMessage(raw);
+                if (!message.isEmpty()) {
+                    return message;
+                }
+                if (raw != null && !raw.trim().isEmpty()) {
+                    return "Home data failed (HTTP " + response.code() + ")";
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        if (!response.isSuccessful()) {
+            return "Home data failed (HTTP " + response.code() + ")";
+        }
+        return fallback;
+    }
+
+    private String extractJsonMessage(String raw) {
+        if (raw == null) return "";
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("\"message\"\\s*:\\s*\"([^\"]*)\"")
+                .matcher(raw);
+        if (!matcher.find()) return "";
+        return matcher.group(1)
+                .replace("\\/", "/")
+                .replace("\\\"", "\"")
+                .replace("\\n", "\n")
+                .trim();
     }
 
     private void updateGreeting(String greeting) {
@@ -426,6 +516,36 @@ public class HomeFragment extends Fragment {
         }
     }
 
+    private void openExploreSearch(String query) {
+        if (!isAdded()) return;
+        String q = query == null ? "" : query.trim();
+        if (requireActivity() instanceof MainActivity) {
+            ((MainActivity) requireActivity()).openExploreWithQuery(q);
+        }
+    }
+
+    private void openAiTutor() {
+        if (!isAdded()) return;
+        Intent intent = new Intent(requireContext(), LabTutorActivity.class);
+        String question = edtSearch.getText() != null ? edtSearch.getText().toString().trim() : "";
+        if (!question.isEmpty()) {
+            intent.putExtra(LabTutorActivity.EXTRA_INITIAL_QUESTION, question);
+        }
+        startActivity(intent);
+    }
+
+    private void startVoiceSearch() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Search labs or ask the AI tutor");
+        try {
+            voiceSearchLauncher.launch(intent);
+        } catch (Exception e) {
+            Toast.makeText(requireContext(), "Voice search is not available on this device", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void openLabsTab() {
         if (!isAdded() || !(requireActivity() instanceof MainActivity)) return;
         ((MainActivity) requireActivity()).openLabsForDepartment(-1, "");
@@ -459,24 +579,22 @@ public class HomeFragment extends Fragment {
 
         if (continueItems == null || continueItems.isEmpty()) {
             continueItem = null;
-            txtContinueTitle.setText("No active lab right now");
-            txtContinueSubtitle.setText("Pick a lab to continue your learning journey.");
-            progressContinue.setProgress(0);
-            txtContinuePct.setText("0%");
-            btnResume.setText("Explore");
+            txtContinueCount.setText("0 pending practicals");
+            rvContinueLearning.setVisibility(View.GONE);
+            txtContinueEmpty.setVisibility(View.VISIBLE);
+            continueLearningAdapter.update(new ArrayList<>(), 0);
             return;
         }
 
         continueItem = continueItems.get(0);
-        txtContinueTitle.setText(toDisplayName(continueItem.title));
-
-        String subtitle = continueItem.meta();
-        txtContinueSubtitle.setText(subtitle);
-
-        int pct = pctHint > 0 ? pctHint : 1;
-        progressContinue.setProgress(pct);
-        txtContinuePct.setText(pct + "%");
-        btnResume.setText("Resume");
+        int count = continueItems.size();
+        int pct = Math.max(1, Math.min(100, pctHint > 0 ? pctHint : 1));
+        txtContinueCount.setText(count == 1
+                ? "1 pending practical in your track"
+                : count + " pending practicals in your track");
+        rvContinueLearning.setVisibility(View.VISIBLE);
+        txtContinueEmpty.setVisibility(View.GONE);
+        continueLearningAdapter.update(continueItems, pct);
     }
 
     private void openContinueItem() {
@@ -494,6 +612,11 @@ public class HomeFragment extends Fragment {
         intent.putExtra("title", continueItem.title);
         intent.putExtra("meta", continueItem.meta());
         startActivity(intent);
+    }
+
+    private void openContinueItem(LabItem item) {
+        continueItem = item;
+        openContinueItem();
     }
 
     private List<LabItem> mapLabList(List<LabListItem> source) {
@@ -632,5 +755,166 @@ public class HomeFragment extends Fragment {
 
     private interface EnrichCallback {
         void onDone(List<LabItem> featuredEnriched, List<LabItem> continueEnriched);
+    }
+
+    private class ContinueLearningAdapter extends RecyclerView.Adapter<ContinueLearningAdapter.VH> {
+        private final List<LabItem> items = new ArrayList<>();
+        private final ContinueClickListener listener;
+        private int progressPct;
+
+        ContinueLearningAdapter(List<LabItem> initialItems, int progressPct, ContinueClickListener listener) {
+            this.listener = listener;
+            update(initialItems, progressPct);
+        }
+
+        void update(List<LabItem> nextItems, int nextProgressPct) {
+            items.clear();
+            if (nextItems != null) {
+                items.addAll(nextItems);
+            }
+            progressPct = Math.max(0, Math.min(100, nextProgressPct));
+            notifyDataSetChanged();
+        }
+
+        @NonNull
+        @Override
+        public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            LinearLayout root = new LinearLayout(parent.getContext());
+            root.setOrientation(LinearLayout.VERTICAL);
+            root.setBackgroundResource(R.drawable.bg_card_surface);
+            root.setPadding(dp(14), dp(14), dp(14), dp(14));
+            RecyclerView.LayoutParams rootLp = new RecyclerView.LayoutParams(
+                    Math.max(dp(268), parent.getResources().getDisplayMetrics().widthPixels - dp(76)),
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            rootLp.setMarginEnd(dp(10));
+            root.setLayoutParams(rootLp);
+
+            LinearLayout topRow = new LinearLayout(parent.getContext());
+            topRow.setOrientation(LinearLayout.HORIZONTAL);
+            topRow.setGravity(Gravity.CENTER_VERTICAL);
+
+            TextView monogram = new TextView(parent.getContext());
+            monogram.setGravity(Gravity.CENTER);
+            monogram.setBackgroundResource(R.drawable.bg_nav_active);
+            monogram.setTextColor(parent.getContext().getColor(R.color.vl_primary));
+            monogram.setTextSize(12f);
+            monogram.setTypeface(Typeface.DEFAULT_BOLD);
+            topRow.addView(monogram, new LinearLayout.LayoutParams(dp(38), dp(38)));
+
+            TextView badge = new TextView(parent.getContext());
+            badge.setGravity(Gravity.CENTER);
+            badge.setBackgroundResource(R.drawable.bg_badge_soft_pill);
+            badge.setTextColor(parent.getContext().getColor(R.color.vl_primary));
+            badge.setTextSize(11f);
+            badge.setTypeface(Typeface.DEFAULT_BOLD);
+            badge.setPadding(dp(10), 0, dp(10), 0);
+            LinearLayout.LayoutParams badgeLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    dp(30)
+            );
+            badgeLp.setMarginStart(dp(10));
+            topRow.addView(badge, badgeLp);
+
+            TextView title = new TextView(parent.getContext());
+            title.setTextColor(parent.getContext().getColor(R.color.vl_text));
+            title.setTextSize(16f);
+            title.setTypeface(Typeface.DEFAULT_BOLD);
+            title.setMaxLines(2);
+            title.setEllipsize(TextUtils.TruncateAt.END);
+            title.setPadding(0, dp(12), 0, 0);
+
+            TextView meta = new TextView(parent.getContext());
+            meta.setTextColor(parent.getContext().getColor(R.color.vl_text_muted));
+            meta.setTextSize(12f);
+            meta.setMaxLines(1);
+            meta.setEllipsize(TextUtils.TruncateAt.END);
+            meta.setPadding(0, dp(4), 0, 0);
+
+            LinearLayout progressRow = new LinearLayout(parent.getContext());
+            progressRow.setGravity(Gravity.CENTER_VERTICAL);
+            progressRow.setOrientation(LinearLayout.HORIZONTAL);
+            progressRow.setPadding(0, dp(12), 0, 0);
+
+            ProgressBar progressBar = new ProgressBar(parent.getContext(), null, android.R.attr.progressBarStyleHorizontal);
+            progressBar.setMax(100);
+            progressBar.setProgressDrawable(parent.getContext().getDrawable(R.drawable.bg_progress_home));
+            LinearLayout.LayoutParams progressLp = new LinearLayout.LayoutParams(0, dp(6), 1f);
+            progressRow.addView(progressBar, progressLp);
+
+            TextView progressText = new TextView(parent.getContext());
+            progressText.setTextColor(parent.getContext().getColor(R.color.vl_text_muted));
+            progressText.setTextSize(11f);
+            progressText.setTypeface(Typeface.DEFAULT_BOLD);
+            LinearLayout.LayoutParams progressTextLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            progressTextLp.setMarginStart(dp(8));
+            progressRow.addView(progressText, progressTextLp);
+
+            TextView cta = new TextView(parent.getContext());
+            cta.setText("Resume practical");
+            cta.setTextColor(parent.getContext().getColor(R.color.vl_primary));
+            cta.setTextSize(12f);
+            cta.setTypeface(Typeface.DEFAULT_BOLD);
+            cta.setPadding(0, dp(10), 0, 0);
+
+            root.addView(topRow);
+            root.addView(title);
+            root.addView(meta);
+            root.addView(progressRow);
+            root.addView(cta);
+            return new VH(root, monogram, badge, title, meta, progressBar, progressText);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull VH holder, int position) {
+            LabItem item = items.get(position);
+            holder.monogram.setText(makeDepartmentMonogram(item.subject));
+            holder.badge.setText("Pending " + (position + 1) + "/" + items.size());
+            holder.title.setText(toDisplayName(item.title));
+            String meta = item.meta();
+            holder.meta.setText(meta.isEmpty() ? "Ready to continue" : meta);
+            holder.progressBar.setProgress(progressPct);
+            holder.progressText.setText(progressPct + "%");
+            holder.itemView.setOnClickListener(v -> listener.onContinueClick(item));
+        }
+
+        @Override
+        public int getItemCount() {
+            return items.size();
+        }
+
+        class VH extends RecyclerView.ViewHolder {
+            final TextView monogram;
+            final TextView badge;
+            final TextView title;
+            final TextView meta;
+            final ProgressBar progressBar;
+            final TextView progressText;
+
+            VH(
+                    @NonNull View itemView,
+                    TextView monogram,
+                    TextView badge,
+                    TextView title,
+                    TextView meta,
+                    ProgressBar progressBar,
+                    TextView progressText
+            ) {
+                super(itemView);
+                this.monogram = monogram;
+                this.badge = badge;
+                this.title = title;
+                this.meta = meta;
+                this.progressBar = progressBar;
+                this.progressText = progressText;
+            }
+        }
+    }
+
+    private interface ContinueClickListener {
+        void onContinueClick(LabItem item);
     }
 }

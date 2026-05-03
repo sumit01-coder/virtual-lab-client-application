@@ -12,6 +12,7 @@ import com.virtuallab.client.R;
 import com.virtuallab.client.api.ApiClient;
 import com.virtuallab.client.data.AppSettingsPrefs;
 import com.virtuallab.client.data.SessionStore;
+import com.virtuallab.client.util.NetworkHealthManager;
 
 public class SplashActivity extends AppCompatActivity {
 
@@ -34,11 +35,28 @@ public class SplashActivity extends AppCompatActivity {
         findViewById(android.R.id.content).postDelayed(() -> {
             SharedPreferences prefs = getSharedPreferences(PREFS_APP, Context.MODE_PRIVATE);
             boolean onboardingDone = prefs.getBoolean(KEY_ONBOARDING_DONE, false);
-            Class<?> nextScreen = onboardingDone ? MainActivity.class : OnboardingActivity.class;
-            startActivity(new Intent(SplashActivity.this, nextScreen));
-            finish();
-            overridePendingTransition(R.anim.fade_slide_in, R.anim.fade_out);
+            if (!onboardingDone) {
+                openScreen(OnboardingActivity.class);
+                return;
+            }
+            NetworkHealthManager.checkAsync(this, result -> {
+                if (result.isGoodForServerData()) {
+                    openScreen(MainActivity.class);
+                } else {
+                    Intent i = new Intent(SplashActivity.this, NetworkStatusActivity.class);
+                    i.putExtra(NetworkStatusActivity.EXTRA_NEXT_SCREEN, NetworkStatusActivity.NEXT_MAIN);
+                    startActivity(i);
+                    finish();
+                    overridePendingTransition(R.anim.fade_slide_in, R.anim.fade_out);
+                }
+            });
         }, 1400);
+    }
+
+    private void openScreen(Class<?> screen) {
+        startActivity(new Intent(SplashActivity.this, screen));
+        finish();
+        overridePendingTransition(R.anim.fade_slide_in, R.anim.fade_out);
     }
 }
 

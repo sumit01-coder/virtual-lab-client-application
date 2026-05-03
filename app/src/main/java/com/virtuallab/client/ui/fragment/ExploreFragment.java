@@ -35,6 +35,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class ExploreFragment extends Fragment {
+    private static final String ARG_QUERY = "query";
 
     private RecyclerView rv;
     private EditText edtSearch;
@@ -45,6 +46,14 @@ public class ExploreFragment extends Fragment {
     private final List<LabItem> allItems = new ArrayList<>();
     private String selectedDifficulty = "All";
     private long prefsVersionSeen = -1L;
+
+    public static ExploreFragment newInstance(String query) {
+        ExploreFragment fragment = new ExploreFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_QUERY, query);
+        fragment.setArguments(args);
+        return fragment;
+    }
 
     @Nullable
     @Override
@@ -84,6 +93,14 @@ public class ExploreFragment extends Fragment {
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
             @Override public void afterTextChanged(Editable s) { applyFilter(); }
         });
+
+        if (getArguments() != null) {
+            String query = getArguments().getString(ARG_QUERY, "");
+            if (query != null && !query.trim().isEmpty()) {
+                edtSearch.setText(query.trim());
+                edtSearch.setSelection(edtSearch.length());
+            }
+        }
 
         loadExplore();
     }

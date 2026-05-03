@@ -1,9 +1,6 @@
 package com.virtuallab.client.ui;
 
-import android.content.Context;
 import android.content.Intent;
-import android.net.ConnectivityManager;
-import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.Spanned;
@@ -28,6 +25,7 @@ import com.virtuallab.client.data.SessionStore;
 import com.virtuallab.client.offline.OfflineSimulationManager;
 import com.virtuallab.client.offline.OfflineSyncManager;
 import com.virtuallab.client.offline.SimulationMeta;
+import com.virtuallab.client.util.NetworkHealthManager;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -72,12 +70,6 @@ public class LabDetailsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_lab_details);
 
-        if (!isInternetAvailable()) {
-            startActivity(new Intent(this, OfflineLabsActivity.class));
-            finish();
-            return;
-        }
-
         practicalId = getIntent().getIntExtra("id", 0);
 
         try {
@@ -90,15 +82,7 @@ public class LabDetailsActivity extends AppCompatActivity {
         bindViews();
         setupActions();
 
-        if (practicalId > 0) {
-            if (!SessionStore.isLoggedIn()) {
-                Toast.makeText(this, "Login required to access practical", Toast.LENGTH_SHORT).show();
-                startActivity(new Intent(this, LoginActivity.class));
-                finish();
-                return;
-            }
-            validateAccessThenLoad(practicalId);
-        }
+        validateNetworkThenLoad();
     }
 
     @Override
@@ -175,6 +159,26 @@ public class LabDetailsActivity extends AppCompatActivity {
                 startActivity(new Intent(this, OfflineLabsActivity.class)));
     }
 
+    private void validateNetworkThenLoad() {
+        if (practicalId <= 0) return;
+        if (!SessionStore.isLoggedIn()) {
+            Toast.makeText(this, "Login required to access practical", Toast.LENGTH_SHORT).show();
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return;
+        }
+        NetworkHealthManager.checkAsync(this, result -> {
+            if (!result.isGoodForServerData()) {
+                Intent i = new Intent(this, NetworkStatusActivity.class);
+                i.putExtra(NetworkStatusActivity.EXTRA_NEXT_SCREEN, NetworkStatusActivity.NEXT_MAIN);
+                startActivity(i);
+                finish();
+                return;
+            }
+            validateAccessThenLoad(practicalId);
+        });
+    }
+
     private void validateAccessThenLoad(int practicalId) {
         Map<String, Object> checkBody = new HashMap<>();
         checkBody.put("practical_id", practicalId);
@@ -184,12 +188,17 @@ public class LabDetailsActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<ApiEnvelope<AccessPayload>> call, Response<ApiEnvelope<AccessPayload>> response) {
                 ApiEnvelope<AccessPayload> env = response.body();
-                if (!(response.isSuccessful() && env != null && env.status)) {
-                    Toast.makeText(LabDetailsActivity.this, "Unable to access practical", Toast.LENGTH_LONG).show();
+                if (!(response.isSuccessful() && env != null && env.status && env.data != null)) {
+                    Toast.makeText(LabDetailsActivity.this, accessErrorMessage(env, "Unable to access practical"), Toast.LENGTH_LONG).show();
                     finish();
                     return;
                 }
-                commitPracticalAccess(practicalId);
+
+                if (env.data.would_charge) {
+                    showTokenRequiredDialog(env.data, practicalId);
+                } else {
+                    commitPracticalAccess(practicalId);
+                }
             }
 
             @Override
@@ -210,7 +219,7 @@ public class LabDetailsActivity extends AppCompatActivity {
             public void onResponse(Call<ApiEnvelope<AccessPayload>> call, Response<ApiEnvelope<AccessPayload>> response) {
                 ApiEnvelope<AccessPayload> env = response.body();
                 if (!(response.isSuccessful() && env != null && env.status)) {
-                    Toast.makeText(LabDetailsActivity.this, "Unable to access practical", Toast.LENGTH_LONG).show();
+                    Toast.makeText(LabDetailsActivity.this, accessErrorMessage(env, "Unable to access practical"), Toast.LENGTH_LONG).show();
                     finish();
                     return;
                 }
@@ -224,6 +233,22 @@ public class LabDetailsActivity extends AppCompatActivity {
                 finish();
             }
         });
+    }
+
+    private void showTokenRequiredDialog(AccessPayload access, int practicalId) {
+        TokenAccessDialog.show(
+                this,
+                access.tokens,
+                () -> commitPracticalAccess(practicalId),
+                this::finish
+        );
+    }
+
+    private String accessErrorMessage(ApiEnvelope<AccessPayload> env, String fallback) {
+        if (env != null && env.message != null && !env.message.trim().isEmpty()) {
+            return env.message;
+        }
+        return fallback;
     }
 
     private void loadDetails(int id) {
@@ -305,15 +330,6 @@ public class LabDetailsActivity extends AppCompatActivity {
         i.putExtra("practical_id", practicalId);
         i.putExtra("simulator_url", simulatorUrl);
         startActivity(i);
-    }
-
-    private boolean isInternetAvailable() {
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm == null) return false;
-        android.net.Network net = cm.getActiveNetwork();
-        if (net == null) return false;
-        NetworkCapabilities cap = cm.getNetworkCapabilities(net);
-        return cap != null && cap.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
     }
 
     private String safe(String value) {

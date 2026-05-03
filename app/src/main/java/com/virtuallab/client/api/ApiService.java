@@ -2,6 +2,8 @@ package com.virtuallab.client.api;
 
 import com.virtuallab.client.api.dto.ApiEnvelope;
 import com.virtuallab.client.api.dto.AccessPayload;
+import com.virtuallab.client.api.dto.AiTutorRequest;
+import com.virtuallab.client.api.dto.AiTutorResponse;
 import com.virtuallab.client.api.dto.CertificatePayload;
 import com.virtuallab.client.api.dto.HomePayload;
 import com.virtuallab.client.api.dto.LabDetailsPayload;
@@ -19,6 +21,7 @@ import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.POST;
 import retrofit2.http.Query;
+import retrofit2.http.Url;
 
 public interface ApiService {
 
@@ -46,6 +49,9 @@ public interface ApiService {
     @GET("profile.php")
     Call<ApiEnvelope<ProfilePayload>> profile();
 
+    @GET("session_status.php")
+    Call<ApiEnvelope<Object>> sessionStatus();
+
     @GET("departments_tree.php")
     Call<ApiEnvelope<CatalogPayload>> departmentsTree();
 
@@ -60,4 +66,7 @@ public interface ApiService {
 
     @POST("certificate_issue.php")
     Call<ApiEnvelope<CertificatePayload>> issueCertificate(@Body Map<String, Object> body);
+
+    @POST
+    Call<AiTutorResponse> askAiTutor(@Url String url, @Body AiTutorRequest body);
 }

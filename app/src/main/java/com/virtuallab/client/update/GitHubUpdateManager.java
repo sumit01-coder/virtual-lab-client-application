@@ -2,19 +2,16 @@ package com.virtuallab.client.update;
 
 import android.app.DownloadManager;
 import android.content.Context;
-import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
-import android.provider.Settings;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 
-import androidx.core.content.FileProvider;
-
 import com.google.gson.Gson;
 import com.virtuallab.client.Config;
+import com.virtuallab.client.security.SecurityPolicy;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +29,9 @@ public final class GitHubUpdateManager {
     private static final String KEY_DOWNLOAD_PATH = "download_path";
     private static final String KEY_DOWNLOAD_VERSION = "download_version";
     private static final String APK_MIME = "application/vnd.android.package-archive";
-    private static final OkHttpClient HTTP = new OkHttpClient();
+    private static final OkHttpClient HTTP = new OkHttpClient.Builder()
+            .addInterceptor(SecurityPolicy.trustedEndpointInterceptor())
+            .build();
     private static final Gson GSON = new Gson();
 
     private GitHubUpdateManager() {}
@@ -205,34 +204,7 @@ public final class GitHubUpdateManager {
     }
 
     public static boolean installDownloadedApk(Context context) {
-        Context appContext = context.getApplicationContext();
-        File apkFile = getDownloadedApkFile(appContext);
-        if (apkFile == null) {
-            return false;
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                && !appContext.getPackageManager().canRequestPackageInstalls()) {
-            Intent settingsIntent = new Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:" + appContext.getPackageName())
-            );
-            settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            appContext.startActivity(settingsIntent);
-            return false;
-        }
-
-        Uri contentUri = FileProvider.getUriForFile(
-                appContext,
-                appContext.getPackageName() + ".fileprovider",
-                apkFile
-        );
-        Intent installIntent = new Intent(Intent.ACTION_VIEW)
-                .setDataAndType(contentUri, APK_MIME)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        appContext.startActivity(installIntent);
-        return true;
+        return false;
     }
 
     public static boolean hasDownloadedApk(Context context) {
@@ -281,6 +253,28 @@ public final class GitHubUpdateManager {
         } catch (Exception ignored) {
             return "1.0.0";
         }
+    }
+
+    public static long getCurrentVersionCode(Context context) {
+        try {
+            PackageManager packageManager = context.getPackageManager();
+            PackageInfo packageInfo = packageManager.getPackageInfo(context.getPackageName(), 0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return packageInfo.getLongVersionCode();
+            }
+            return packageInfo.versionCode;
+        } catch (Exception ignored) {
+            return 0L;
+        }
+    }
+
+    public static String getCurrentVersionDisplay(Context context) {
+        long versionCode = getCurrentVersionCode(context);
+        String versionName = getCurrentVersionName(context);
+        if (versionCode > 0) {
+            return versionName + " (" + versionCode + ")";
+        }
+        return versionName;
     }
 
     public static String getRepositoryFullName() {

@@ -1,11 +1,13 @@
 package com.virtuallab.client.ui;
 
 import android.app.DownloadManager;
+import android.app.KeyguardManager;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ApplicationInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -23,7 +25,9 @@ import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 
 import com.virtuallab.client.R;
+import com.virtuallab.client.Config;
 import com.virtuallab.client.data.AppSettingsPrefs;
+import com.virtuallab.client.data.SessionStore;
 import com.virtuallab.client.update.GitHubReleaseInfo;
 import com.virtuallab.client.update.GitHubUpdateManager;
 
@@ -42,6 +46,12 @@ public class SettingsActivity extends AppCompatActivity {
     private TextView txtUpdateStatus;
     private TextView txtReleaseNotes;
     private TextView txtUpdateRepository;
+    private TextView txtSecurityLevel;
+    private TextView txtSecuritySummary;
+    private TextView txtSecurityEncryption;
+    private TextView txtSecurityDeviceLock;
+    private TextView txtSecurityBackup;
+    private TextView txtSecurityNetwork;
     private ProgressBar progressUpdate;
     private Button btnCheckUpdate;
     private Button btnDownloadUpdate;
@@ -78,7 +88,18 @@ public class SettingsActivity extends AppCompatActivity {
         bindViews();
         setupPreferences();
         setupUpdateSection();
+        updateSecurityCard();
         refreshUpdateCard(false);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (txtCurrentVersion != null) {
+            bindCurrentVersion();
+            syncDownloadButtons();
+            updateSecurityCard();
+        }
     }
 
     @Override
@@ -113,6 +134,12 @@ public class SettingsActivity extends AppCompatActivity {
         txtUpdateStatus = findViewById(R.id.txtUpdateStatus);
         txtReleaseNotes = findViewById(R.id.txtReleaseNotes);
         txtUpdateRepository = findViewById(R.id.txtUpdateRepository);
+        txtSecurityLevel = findViewById(R.id.txtSecurityLevel);
+        txtSecuritySummary = findViewById(R.id.txtSecuritySummary);
+        txtSecurityEncryption = findViewById(R.id.txtSecurityEncryption);
+        txtSecurityDeviceLock = findViewById(R.id.txtSecurityDeviceLock);
+        txtSecurityBackup = findViewById(R.id.txtSecurityBackup);
+        txtSecurityNetwork = findViewById(R.id.txtSecurityNetwork);
         progressUpdate = findViewById(R.id.progressUpdate);
         btnCheckUpdate = findViewById(R.id.btnCheckUpdate);
         btnDownloadUpdate = findViewById(R.id.btnDownloadUpdate);
@@ -160,7 +187,7 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void setupUpdateSection() {
-        txtCurrentVersion.setText("Current version: " + GitHubUpdateManager.getCurrentVersionName(this));
+        bindCurrentVersion();
         txtUpdateRepository.setText("GitHub releases: " + GitHubUpdateManager.getRepositoryFullName());
         txtUpdateRepository.setOnClickListener(v -> openUrl(GitHubUpdateManager.getReleasesPageUrl()));
 
@@ -175,6 +202,95 @@ public class SettingsActivity extends AppCompatActivity {
         });
         btnInstallUpdate.setOnClickListener(v -> installDownloadedUpdate());
         syncDownloadButtons();
+    }
+
+    private void updateSecurityCard() {
+        int score = 0;
+
+        boolean encryptedSession = SessionStore.isSecureStorageAvailable(this);
+        if (encryptedSession) score += 30;
+
+        boolean deviceSecure = isDeviceSecure();
+        if (deviceSecure) score += 20;
+
+        boolean backupDisabled = isBackupDisabled();
+        if (backupDisabled) score += 20;
+
+        boolean cleartextBlocked = isCleartextBlocked();
+        boolean httpsApi = Config.BASE_URL != null && Config.BASE_URL.startsWith("https://");
+        if (cleartextBlocked && httpsApi) score += 20;
+
+        boolean debugOff = !isDebuggable();
+        if (debugOff) score += 10;
+
+        String level;
+        if (score >= 90) {
+            level = "Strong";
+        } else if (score >= 70) {
+            level = "Good";
+        } else if (score >= 45) {
+            level = "Basic";
+        } else {
+            level = "Weak";
+        }
+
+        txtSecurityLevel.setText(level);
+        txtSecuritySummary.setText("Security score " + score + "/100. App data, updates, and network settings are checked locally.");
+        setSecurityMetric(
+                txtSecurityEncryption,
+                encryptedSession,
+                encryptedSession
+                        ? "Encryption: session tokens use Android Keystore AES encryption."
+                        : "Encryption: secure keystore unavailable; using fallback app-private storage."
+        );
+        setSecurityMetric(
+                txtSecurityDeviceLock,
+                deviceSecure,
+                deviceSecure
+                        ? "Device lock: enabled. Encrypted keys are better protected."
+                        : "Device lock: not enabled. Add PIN, pattern, or biometrics for stronger protection."
+        );
+        setSecurityMetric(
+                txtSecurityBackup,
+                backupDisabled,
+                backupDisabled
+                        ? "Private backup: disabled for sensitive app data."
+                        : "Private backup: enabled. Sensitive data may be included in device backups."
+        );
+        setSecurityMetric(
+                txtSecurityNetwork,
+                cleartextBlocked && httpsApi && debugOff,
+                "Network security: HTTPS API " + (httpsApi ? "enabled" : "missing")
+                        + ", cleartext " + (cleartextBlocked ? "blocked" : "allowed")
+                        + ", debug " + (debugOff ? "off" : "on") + "."
+        );
+    }
+
+    private void setSecurityMetric(TextView view, boolean ok, String text) {
+        view.setText((ok ? "OK: " : "Check: ") + text);
+        view.setBackgroundResource(ok ? R.drawable.bg_security_metric : R.drawable.bg_security_metric_warn);
+        view.setTextColor(getColor(ok ? R.color.vl_text : R.color.vl_warning));
+    }
+
+    private boolean isDeviceSecure() {
+        KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+        return keyguardManager != null && keyguardManager.isDeviceSecure();
+    }
+
+    private boolean isBackupDisabled() {
+        return (getApplicationInfo().flags & ApplicationInfo.FLAG_ALLOW_BACKUP) == 0;
+    }
+
+    private boolean isCleartextBlocked() {
+        return (getApplicationInfo().flags & ApplicationInfo.FLAG_USES_CLEARTEXT_TRAFFIC) == 0;
+    }
+
+    private boolean isDebuggable() {
+        return (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+    }
+
+    private void bindCurrentVersion() {
+        txtCurrentVersion.setText("Current version: " + GitHubUpdateManager.getCurrentVersionDisplay(this));
     }
 
     private void refreshUpdateCard(boolean manualRefresh) {
@@ -222,8 +338,8 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         if (releaseInfo.isNewerThan(GitHubUpdateManager.getCurrentVersionName(this))) {
-            txtUpdateStatus.setText("Update available. Version " + releaseInfo.version + " is ready to download.");
-            btnDownloadUpdate.setVisibility(View.VISIBLE);
+            txtUpdateStatus.setText("Update available. Open the trusted release page to review the latest build.");
+            btnDownloadUpdate.setVisibility(View.GONE);
         } else {
             txtUpdateStatus.setText("This app is already on the latest published version.");
             btnDownloadUpdate.setVisibility(View.GONE);
@@ -270,14 +386,9 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void syncDownloadButtons() {
-        boolean hasDownloadedUpdate = GitHubUpdateManager.hasDownloadedApk(this);
-        btnInstallUpdate.setVisibility(hasDownloadedUpdate ? View.VISIBLE : View.GONE);
-        if (hasDownloadedUpdate) {
-            String version = GitHubUpdateManager.getDownloadedVersion(this);
-            btnInstallUpdate.setText(version.isEmpty()
-                    ? "Install downloaded update"
-                    : ("Install downloaded update (" + version + ")"));
-        }
+        btnInstallUpdate.setVisibility(View.GONE);
+        btnDownloadUpdate.setVisibility(View.GONE);
+        GitHubUpdateManager.clearStoredDownload(this);
     }
 
     private void setCheckingState(boolean checking) {

@@ -73,6 +73,7 @@ public class LoginActivity extends AppCompatActivity {
             Map<String, Object> body = new HashMap<>();
             body.put("identifier", identifier);
             body.put("password", password);
+            addDeviceInfo(body);
 
             ApiClient.get().login(body).enqueue(new Callback<ApiEnvelope<LoginPayload>>() {
                 @Override
@@ -133,6 +134,7 @@ public class LoginActivity extends AppCompatActivity {
                 body.put("name", account.getDisplayName());
                 body.put("google_id", account.getId());
                 body.put("picture", account.getPhotoUrl() != null ? account.getPhotoUrl().toString() : "");
+                addDeviceInfo(body);
 
                 ApiClient.get().googleLogin(body).enqueue(new Callback<ApiEnvelope<LoginPayload>>() {
                     @Override
@@ -166,8 +168,7 @@ public class LoginActivity extends AppCompatActivity {
         String code = codeRaw.toUpperCase().trim();
         Map<String, Object> body = new HashMap<>();
         body.put("code", code);
-        body.put("device_name", Build.MANUFACTURER + " " + Build.MODEL);
-        body.put("platform", "android-" + Build.VERSION.RELEASE);
+        addDeviceInfo(body);
         ApiClient.get().linkLogin(body).enqueue(new Callback<ApiEnvelope<LoginPayload>>() {
             @Override
             public void onResponse(Call<ApiEnvelope<LoginPayload>> call, Response<ApiEnvelope<LoginPayload>> response) {
@@ -175,7 +176,7 @@ public class LoginActivity extends AppCompatActivity {
                 if (response.isSuccessful() && env != null && env.status && env.data != null && env.data.token != null) {
                     SessionStore.setAuthToken(env.data.token);
                     Toast.makeText(LoginActivity.this, "Device linked", Toast.LENGTH_SHORT).show();
-                    openMain();
+                    verifyLinkedSessionThenOpen();
                 } else {
                     Toast.makeText(LoginActivity.this, env != null ? env.message : "Link failed", Toast.LENGTH_SHORT).show();
                 }
@@ -194,5 +195,36 @@ public class LoginActivity extends AppCompatActivity {
         if (data == null) return "";
         String code = data.getQueryParameter("code");
         return code != null ? code.trim() : "";
+    }
+
+    private void addDeviceInfo(Map<String, Object> body) {
+        body.put("device_name", Build.MANUFACTURER + " " + Build.MODEL);
+        body.put("platform", "android-" + Build.VERSION.RELEASE);
+    }
+
+    private void verifyLinkedSessionThenOpen() {
+        ApiClient.get().sessionStatus().enqueue(new Callback<ApiEnvelope<Object>>() {
+            @Override
+            public void onResponse(Call<ApiEnvelope<Object>> call, Response<ApiEnvelope<Object>> response) {
+                ApiEnvelope<Object> env = response.body();
+                if (response.isSuccessful() && env != null && env.status) {
+                    openMain();
+                    return;
+                }
+                SessionStore.clear();
+                String message = env != null && env.message != null && !env.message.trim().isEmpty()
+                        ? env.message
+                        : "Linked login could not fetch account data. Please try linking again.";
+                Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
+            }
+
+            @Override
+            public void onFailure(Call<ApiEnvelope<Object>> call, Throwable t) {
+                SessionStore.clear();
+                Toast.makeText(LoginActivity.this,
+                        "Linked, but account data check failed: " + t.getMessage(),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
     }
 }

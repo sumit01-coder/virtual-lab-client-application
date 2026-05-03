@@ -17,17 +17,27 @@ import com.virtuallab.client.ui.fragment.HomeFragment;
 import com.virtuallab.client.ui.fragment.LabsFragment;
 import com.virtuallab.client.ui.fragment.ProfileFragment;
 import com.virtuallab.client.ui.fragment.ProgressFragment;
+import com.virtuallab.client.util.NetworkHealthManager;
 
 public class MainActivity extends AppCompatActivity {
     private BottomNavigationView bottomNav;
     private int pendingDepartmentId = -1;
     private String pendingDepartmentName = "";
+    private String pendingExploreQuery = "";
+    private boolean networkPanelOpening = false;
 
     public void openLabsForDepartment(int departmentId, String departmentName) {
         pendingDepartmentId = departmentId;
         pendingDepartmentName = departmentName != null ? departmentName : "";
         if (bottomNav != null) {
             bottomNav.setSelectedItemId(R.id.nav_labs);
+        }
+    }
+
+    public void openExploreWithQuery(String query) {
+        pendingExploreQuery = query != null ? query : "";
+        if (bottomNav != null) {
+            bottomNav.setSelectedItemId(R.id.nav_explore);
         }
     }
 
@@ -41,7 +51,8 @@ public class MainActivity extends AppCompatActivity {
             int id = item.getItemId();
             Fragment fragment;
             if (id == R.id.nav_explore) {
-                fragment = new ExploreFragment();
+                fragment = ExploreFragment.newInstance(pendingExploreQuery);
+                pendingExploreQuery = "";
             } else if (id == R.id.nav_labs) {
                 if (pendingDepartmentId > 0) {
                     fragment = LabsFragment.newInstance(pendingDepartmentId, pendingDepartmentName);
@@ -75,8 +86,23 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        bottomNav.setSelectedItemId(R.id.nav_home);
+        checkNetworkBeforeServerWork();
+    }
 
+    private void startOnlineExperience() {
+        String tab = getIntent().getStringExtra("tab");
+        pendingExploreQuery = getIntent().getStringExtra("query");
+        if ("explore".equals(tab)) {
+            bottomNav.setSelectedItemId(R.id.nav_explore);
+        } else if ("labs".equals(tab)) {
+            bottomNav.setSelectedItemId(R.id.nav_labs);
+        } else if ("progress".equals(tab)) {
+            bottomNav.setSelectedItemId(R.id.nav_progress);
+        } else if ("profile".equals(tab)) {
+            bottomNav.setSelectedItemId(R.id.nav_profile);
+        } else {
+            bottomNav.setSelectedItemId(R.id.nav_home);
+        }
         // Auto-detect newer simulation packages on server and sync downloaded offline labs.
         try {
             OfflineSyncManager syncManager = new OfflineSyncManager(this);
@@ -84,6 +110,22 @@ public class MainActivity extends AppCompatActivity {
                     runOnUiThread(() -> Toast.makeText(this, message, Toast.LENGTH_SHORT).show()));
         } catch (Exception ignored) {
         }
+    }
+
+    private void checkNetworkBeforeServerWork() {
+        NetworkHealthManager.checkAsync(this, result -> {
+            if (isFinishing()) return;
+            if (result.isGoodForServerData()) {
+                startOnlineExperience();
+                return;
+            }
+            if (networkPanelOpening) return;
+            networkPanelOpening = true;
+            Intent i = new Intent(this, NetworkStatusActivity.class);
+            i.putExtra(NetworkStatusActivity.EXTRA_NEXT_SCREEN, NetworkStatusActivity.NEXT_MAIN);
+            startActivity(i);
+            finish();
+        });
     }
 }
 

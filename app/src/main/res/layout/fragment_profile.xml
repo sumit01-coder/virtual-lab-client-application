@@ -65,24 +65,55 @@
                         android:lineSpacingExtra="3dp" />
                 </LinearLayout>
 
-                <ImageView
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
+                <FrameLayout
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:layout_marginStart="10dp"
-                    android:background="@drawable/bg_glass_card"
-                    android:padding="10dp"
-                    android:src="@drawable/ic_bell_20"
-                    android:tint="@android:color/white" />
+                    android:background="@drawable/bg_profile_header_action"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackgroundBorderless"
+                    android:padding="11dp">
 
-                <ImageView
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:contentDescription="Notifications"
+                        android:src="@drawable/ic_bell_20"
+                        app:tint="@color/vl_primary" />
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_gravity="top|end"
+                        android:layout_margin="4dp"
+                        android:background="@drawable/bg_home_alert_dot" />
+                </FrameLayout>
+
+                <FrameLayout
                     android:id="@+id/btnSettingsTop"
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:layout_marginStart="10dp"
-                    android:background="@drawable/bg_glass_card"
-                    android:padding="10dp"
-                    android:src="@drawable/ic_shield_check"
-                    android:tint="@android:color/white" />
+                    android:background="@drawable/bg_profile_header_action"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackgroundBorderless"
+                    android:padding="10dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:contentDescription="Settings and privacy"
+                        android:src="@drawable/ic_shield_check" />
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_gravity="bottom|end"
+                        android:layout_margin="4dp"
+                        android:background="@drawable/bg_profile_shield_status" />
+                </FrameLayout>
             </LinearLayout>
         </LinearLayout>
 

@@ -8,13 +8,14 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AlertDialog;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.virtuallab.client.R;
 import com.virtuallab.client.api.ApiClient;
 import com.virtuallab.client.api.dto.ApiEnvelope;
 import com.virtuallab.client.api.dto.AccessPayload;
+import com.virtuallab.client.security.SecurityPolicy;
+import com.virtuallab.client.util.NetworkHealthManager;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -36,13 +37,18 @@ public class SimulationActivity extends AppCompatActivity {
         String simulatorUrl = getIntent().getStringExtra("simulator_url");
 
         WebView webView = findViewById(R.id.webSimulation);
-        WebSettings s = webView.getSettings();
-        s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);
-        s.setLoadWithOverviewMode(true);
-        s.setUseWideViewPort(true);
+        SecurityPolicy.applyOnlineWebViewPolicy(webView);
 
-        validateAccessThenLoadSimulation(webView, practicalId, simulatorUrl);
+        NetworkHealthManager.checkAsync(this, result -> {
+            if (!result.isGoodForServerData()) {
+                Intent i = new Intent(this, NetworkStatusActivity.class);
+                i.putExtra(NetworkStatusActivity.EXTRA_NEXT_SCREEN, NetworkStatusActivity.NEXT_MAIN);
+                startActivity(i);
+                finish();
+                return;
+            }
+            validateAccessThenLoadSimulation(webView, practicalId, simulatorUrl);
+        });
 
         findViewById(R.id.btnFinishSim).setOnClickListener(v -> {
             if (practicalId <= 0) {
@@ -94,13 +100,12 @@ public class SimulationActivity extends AppCompatActivity {
                 }
 
                 if (env.data.would_charge) {
-                    new AlertDialog.Builder(SimulationActivity.this)
-                            .setTitle("Token Required")
-                            .setMessage("This practical needs 1 token. Continue and debit 1 token?")
-                            .setNegativeButton("Cancel", (d, w) -> finish())
-                            .setPositiveButton("Continue", (d, w) -> commitAccessAndLoad(webView, practicalId, simulatorUrl))
-                            .setCancelable(false)
-                            .show();
+                    TokenAccessDialog.show(
+                            SimulationActivity.this,
+                            env.data.tokens,
+                            () -> commitAccessAndLoad(webView, practicalId, simulatorUrl),
+                            SimulationActivity.this::finish
+                    );
                 } else {
                     commitAccessAndLoad(webView, practicalId, simulatorUrl);
                 }
@@ -142,6 +147,11 @@ public class SimulationActivity extends AppCompatActivity {
 
     private void loadSimulationOrFallback(WebView webView, String simulatorUrl) {
         if (simulatorUrl != null && !simulatorUrl.isEmpty()) {
+            if (!SecurityPolicy.isTrustedHttpsUrl(simulatorUrl)) {
+                Toast.makeText(this, "Simulation blocked: trusted HTTPS URL required.", Toast.LENGTH_LONG).show();
+                finish();
+                return;
+            }
             webView.loadUrl(simulatorUrl);
         } else {
             String html = "<html><body style='font-family:sans-serif;background:#eef2ff;padding:24px;'>"

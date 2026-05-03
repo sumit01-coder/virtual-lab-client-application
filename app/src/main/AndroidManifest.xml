@@ -2,16 +2,18 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".VirtualLabApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Virtual Lab"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.VirtualLab">
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:theme="@style/Theme.VirtualLab"
+        android:usesCleartextTraffic="false">
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -24,6 +26,8 @@
         </provider>
 
         <activity android:name=".ui.SettingsActivity" />
+        <activity android:name=".ui.LabTutorActivity" />
+        <activity android:name=".ui.NetworkStatusActivity" />
         <activity android:name=".ui.OfflineSimulationDetailsActivity" />
         <activity android:name=".ui.OfflineWebViewActivity" />
         <activity android:name=".ui.StorageDetailsActivity" />

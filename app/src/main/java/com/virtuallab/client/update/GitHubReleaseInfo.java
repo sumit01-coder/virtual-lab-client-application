@@ -37,6 +37,10 @@ public final class GitHubReleaseInfo {
         return compareVersions(version, currentVersion) > 0;
     }
 
+    public static boolean isVersionNewerThan(String candidateVersion, String currentVersion) {
+        return compareVersions(candidateVersion, currentVersion) > 0;
+    }
+
     public String getDisplayNotes() {
         if (!notes.isEmpty()) {
             return notes;
